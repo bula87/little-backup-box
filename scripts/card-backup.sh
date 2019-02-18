@@ -19,6 +19,10 @@
 
 # Specify devices and their their mount points
 # as well as other settings
+LED0="/sys/class/leds/beaglebone:green:usr0"
+LED1="/sys/class/leds/beaglebone:green:usr1"
+LED2="/sys/class/leds/beaglebone:green:usr2"
+LED3="/sys/class/leds/beaglebone:green:usr3"
 STORAGE_DEV="sda1" # Name of the storage device
 STORAGE_MOUNT_POINT="/media/storage" # Mount point of the storage device
 CARD_DEV="sdb1" # Name of the storage card
@@ -26,7 +30,10 @@ CARD_MOUNT_POINT="/media/card" # Mount point of the storage card
 SHUTD="5" # Minutes to wait before shutdown due to inactivity
 
 # Set the ACT LED to heartbeat
-sudo sh -c "echo heartbeat > /sys/class/leds/led0/trigger"
+sudo sh -c "echo heartbeat > $LED0/trigger"
+# Set the USER LED 0 to blink at 1000ms to indicate that the BB is on and waiting for storages (shutdown counter on)
+sudo sh -c "echo timer > $LED0/trigger"
+sudo sh -c "echo 1000 > $LED0/delay_on"
 
 # Shutdown after a specified period of time (in minutes) if no device is connected.
 sudo shutdown -h $SHUTD "Shutdown is activated. To cancel: sudo shutdown -c"
@@ -46,9 +53,15 @@ mount /dev/"$STORAGE_DEV" "$STORAGE_MOUNT_POINT"
 # Cancel shutdown
 sudo shutdown -c
 
-# Set the ACT LED to blink at 1000ms to indicate that the storage device has been mounted
-sudo sh -c "echo timer > /sys/class/leds/led0/trigger"
-sudo sh -c "echo 1000 > /sys/class/leds/led0/delay_on"
+# Set the USER LED 0 to static on to indicate that the storage device has been mounted (shutdown counter off)
+sudo sh -c "echo none > $LED0/trigger"
+sudo sh -c "echo 1 > $LED0/brightness"
+
+
+sudo sh -c "echo heartbeat > $LED1/trigger"
+# Set the USER LED 1 to blink at 1000ms to indicate that the BB is waiting for card reader or a camera
+sudo sh -c "echo timer > $LED1/trigger"
+sudo sh -c "echo 1000 > $LED1/delay_on"
 
 # Wait for a card reader or a camera
 # takes first device found
