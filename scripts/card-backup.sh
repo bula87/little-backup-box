@@ -56,39 +56,31 @@ welcome_LEDs() {
 
 off_LEDs() {
   INDEX=$1
-  for i in `seq $INDEX 3`
+  for i in `seq 3 -1 $INDEX`
   do
+    echo $1
     sudo sh -c "echo 0 > $LED$i/brightness"
   done
 }
 
 show_progress() {
-  $PROGRESS=$1
-  if [ $PROGRESS -gt 0 ] && [ $PROGRESS -lt 24 ]; then
+  PROGRESS=$1
+  if [ $PROGRESS -gt 0 ] && [ $PROGRESS -le 24 ]; then
       STEP=0
-    elif [ $PROGRESS -gt 25 ] && [ $PROGRESS -lt 49 ]; then
+    elif [ $PROGRESS -gt 25 ] && [ $PROGRESS -le 49 ]; then
       STEP=1
-    elif [ $PROGRESS -gt 50 ] && [ $PROGRESS -lt 74 ]; then
+    elif [ $PROGRESS -gt 50 ] && [ $PROGRESS -le 74 ]; then
       STEP=2
-    elif [ $PROGRESS -gt 75 ] && [ $PROGRESS -lt 100 ]; then
+    elif [ $PROGRESS -gt 75 ] && [ $PROGRESS -le 100 ]; then
       STEP=3
     fi
-    if [ $STATE -eq 4] ; then
+    if [ $STATE -eq 4 ] ; then
       off_LEDs $STEP
       STATE=$STEP
     else
+      sudo sh -c "echo 1 > $LED$STATE/brightness"
       STATE=$((STATE+1))
     fi
-}
-
-activate_cylon_leds() {
-  cylon_leds & CYLON_PID=$!
-}
-
-deactivate_cylon_leds() {
-  if [ -e /proc/$CYLON_PID ]; then
-      kill $CYLON_PID > /dev/null 2>&1
-  fi
 }
 
 STORAGE_DEV="sda1" # Name of the storage device
@@ -116,7 +108,7 @@ while [ -z "${STORAGE}" ]
 done
 
 # When the USB storage device is detected, mount it
-mount /dev/"$STORAGE_DEV" "$STORAGE_MOUNT_POINT"
+sudo mount /dev/"$STORAGE_DEV" "$STORAGE_MOUNT_POINT"
 
 # Cancel shutdown
 sudo shutdown -c
@@ -141,8 +133,8 @@ done
 
 # If the card reader is detected, mount it and obtain its UUID
 if [ ! -z "${CARD_READER[0]}" ]; then
-  mount /dev"/${CARD_READER[0]}" "$CARD_MOUNT_POINT"
-  
+  sudo mount /dev"/${CARD_READER[0]}" "$CARD_MOUNT_POINT"
+
   # Set the USER LED 1 to static on to indicate that the SDCard has been mounted
   sudo sh -c "echo none > $LED1/trigger"
   sudo sh -c "echo 1 > $LED1/brightness"
@@ -166,22 +158,22 @@ if [ ! -z "${CARD_READER[0]}" ]; then
   rsync -avh --info=progress2 --exclude "*.id" "$CARD_MOUNT_POINT"/ "$BACKUP_PATH" &
   pid=$!
 
-  reset_LEDs
-  
+  sudo sh -c "echo 0 > $LED1/brightness"
+
   while kill -0 $pid 2> /dev/null
     do
     STORAGE_COUNT=$(find $BACKUP_PATH/ -type f | wc -l)
     PERCENT=$(expr 100 \* $STORAGE_COUNT / $CARD_COUNT)
     sudo sh -c "echo $PERCENT"
     show_progress $PERCENT
-    sleep 1
+    sleep 0.4
   done
   sudo sh -c "echo 1 > $LED3/brightness"
 fi
 
 # Shutdown
 sync
-umount /media/card
-umount /media/storage
+sudo umount /media/card
+sudo umount /media/storage
 sync
 shutdown -h now
