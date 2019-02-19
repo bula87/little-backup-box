@@ -26,47 +26,58 @@ LED0="/sys/class/leds/beaglebone:green:usr0"
 LED1="/sys/class/leds/beaglebone:green:usr1"
 LED2="/sys/class/leds/beaglebone:green:usr2"
 LED3="/sys/class/leds/beaglebone:green:usr3"
+LED="/sys/class/leds/beaglebone:green:usr"
 
-cylon_leds() {
-  if [ -e /sys/class/leds/beaglebone\:green\:usr0/trigger ] ; then
-      BASE=/sys/class/leds/beaglebone\:green\:usr
-      echo none > $LED0/trigger
-      echo none > $LED1/trigger
-      echo none > $LED2/trigger
-      echo none > $LED3/trigger
+reset_LEDs() {
+  sudo sh -c "echo none > $LED0/trigger"
+  sudo sh -c "echo 0 > $LED0/brightness"
+  sudo sh -c "echo none > $LED1/trigger"
+  sudo sh -c "echo 0 > $LED1/brightness"
+  sudo sh -c "echo none > $LED2/trigger"
+  sudo sh -c "echo 0 > $LED2/brightness"
+  sudo sh -c "echo none > $LED3/trigger"
+  sudo sh -c "echo 0 > $LED3/brightness"
+}
 
-      while : ; do
-        case $STATE in
-          0)
-              echo 255 > ${LED0}/brightness
-              echo 0 > ${LED1}/brightness
-              echo 0 > ${LED2}/brightness
-              echo 0   > ${LED3}/brightness
-            ;;
-          1)
-              echo 255 > ${LED0}/brightness
-              echo 255 > ${LED1}/brightness
-              echo 0 > ${LED2}/brightness
-              echo 0   > ${LED3}/brightness
-            ;;
-          2)
-            echo 255 > ${LED0}/brightness
-              echo 255 > ${LED1}/brightness
-              echo 255 > ${LED2}/brightness
-              echo 0   > ${LED3}/brightness
-            ;;
-          3)
-              echo 255 > ${LED0}/brightness
-              echo 255 > ${LED1}/brightness
-              echo 255 > ${LED2}/brightness
-              echo 255 > ${LED3}/brightness
-            ;;
-        esac
-        sleep 0.08
-        echo $BASE$STATE
-        echo 0 > "$BASE$STATE/brightness"
-        sleep 0.08
-      done
+welcome_LEDs() {
+  reset_LEDs
+  sleep 1
+  sudo sh -c "echo 1 > $LED0/brightness"
+  sudo sh -c "echo 1 > $LED1/brightness"
+  sudo sh -c "echo 1 > $LED2/brightness"
+  sudo sh -c "echo 1 > $LED3/brightness"
+  sleep 1
+  sudo sh -c "echo 0 > $LED0/brightness"
+  sudo sh -c "echo 0 > $LED1/brightness"
+  sudo sh -c "echo 0 > $LED2/brightness"
+  sudo sh -c "echo 0 > $LED3/brightness"
+  sleep 0.5
+}
+
+off_LEDs() {
+  INDEX=$1
+  for i in `seq $INDEX 3`
+  do
+    sudo sh -c "echo 0 > $LED$i/brightness"
+  done
+}
+
+show_progress() {
+  $PROGRESS=$1
+  if [ $PROGRESS -gt 0 ] && [ $PROGRESS -lt 24 ]; then
+      STEP=0
+    elif [ $PROGRESS -gt 25 ] && [ $PROGRESS -lt 49 ]; then
+      STEP=1
+    elif [ $PROGRESS -gt 50 ] && [ $PROGRESS -lt 74 ]; then
+      STEP=2
+    elif [ $PROGRESS -gt 75 ] && [ $PROGRESS -lt 100 ]; then
+      STEP=3
+    fi
+    if [ $STATE -eq 4] ; then
+      off_LEDs $STEP
+      STATE=$STEP
+    else
+      STATE=$((STATE+1))
     fi
 }
 
@@ -86,14 +97,7 @@ CARD_DEV="mmcblk0p1" # Name of the storage card
 CARD_MOUNT_POINT="/media/card" # Mount point of the storage card
 SHUTD="5" # Minutes to wait before shutdown due to inactivity
 
-sudo sh -c "echo none > $LED0/trigger"
-sudo sh -c "echo 0 > $LED0/brightness"
-sudo sh -c "echo none > $LED1/trigger"
-sudo sh -c "echo 0 > $LED1/brightness"
-sudo sh -c "echo none > $LED2/trigger"
-sudo sh -c "echo 0 > $LED2/brightness"
-sudo sh -c "echo none > $LED3/trigger"
-sudo sh -c "echo 0 > $LED3/brightness"
+welcome_LEDs
 
 # Set the ACT LED to heartbeat
 sudo sh -c "echo heartbeat > $LED0/trigger"
@@ -163,56 +167,16 @@ if [ ! -z "${CARD_READER[0]}" ]; then
   rsync -avh --info=progress2 --exclude "*.id" "$CARD_MOUNT_POINT"/ "$BACKUP_PATH" &
   pid=$!
 
-  activate_cylon_leds
+  reset_LEDs
   #sudo sh -c "echo timer > $LED2/trigger"
   while kill -0 $pid 2> /dev/null
     do
     STORAGE_COUNT=$(find $BACKUP_PATH/ -type f | wc -l)
     PERCENT=$(expr 100 \* $STORAGE_COUNT / $CARD_COUNT)
     sudo sh -c "echo $PERCENT"
-    #IF STATEMENTS HERE FOR LEDS
-    if [ $PERCENT -gt 0 ] && [ $PERCENT -lt 24 ]; then
-      STATE=0
-      echo STATE0
-      #sudo sh -c "echo 1 > $LED0/brightness"
-      #sudo sh -c "echo 0 > $LED1/brightness"
-      #sudo sh -c "echo 0 > $LED2/brightness"
-      #sudo sh -c "echo 0 > $LED3/brightness"
-    elif [ $PERCENT -gt 25 ] && [ $PERCENT -lt 49 ]; then
-      STATE=1
-      echo STATE1
-      #sudo sh -c "echo 1 > $LED0/brightness"
-      #sudo sh -c "echo 1 > $LED1/brightness"
-      #sudo sh -c "echo 0 > $LED2/brightness"
-      #sudo sh -c "echo 0 > $LED3/brightness"
-    elif [ $PERCENT -gt 50 ] && [ $PERCENT -lt 74 ]; then
-      STATE=2
-      STATE2
-      #sudo sh -c "echo 1 > $LED0/brightness"
-      #sudo sh -c "echo 1 > $LED1/brightness"
-      #sudo sh -c "echo 1 > $LED2/brightness"
-      #sudo sh -c "echo 0 > $LED3/brightness"
-    elif [ $PERCENT -gt 75 ] && [ $PERCENT -lt 100 ]; then
-      STATE=3
-      STATE3
-      #sudo sh -c "echo 1 > $LED0/brightness"
-      #sudo sh -c "echo 1 > $LED1/brightness"
-      #sudo sh -c "echo 1 > $LED2/brightness"
-      #sudo sh -c "echo 1 > $LED3/brightness"
-    fi
-    # then
-    #LED
-    #fi
+    show_progress $PERCENT
     sleep 1
   done
-  deactivate_cylon_leds
-  sudo sh -c "echo none > $LED0/trigger"
-  sudo sh -c "echo 1 > $LED0/brightness"
-  sudo sh -c "echo none > $LED1/trigger"
-  sudo sh -c "echo 1 > $LED1/brightness"
-  sudo sh -c "echo none > $LED2/trigger"
-  sudo sh -c "echo 1 > $LED2/brightness"
-  sudo sh -c "echo none > $LED3/trigger"
   sudo sh -c "echo 1 > $LED3/brightness"
 fi
 
@@ -220,4 +184,5 @@ fi
 sync
 umount /media/card
 umount /media/storage
-#shutdown -h now
+sync
+shutdown -h now
