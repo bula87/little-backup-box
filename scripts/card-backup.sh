@@ -99,18 +99,16 @@ SHUTD="5" # Minutes to wait before shutdown due to inactivity
 
 welcome_LEDs
 
-# Set the ACT LED to heartbeat
+# Set the LED 0 to blink at 1000ms to indicate that the BB is on and waiting for storages (shutdown counter on)
 sudo sh -c "echo heartbeat > $LED0/trigger"
-# Set the USER LED 0 to blink at 1000ms to indicate that the BB is on and waiting for storages (shutdown counter on)
 sudo sh -c "echo timer > $LED0/trigger"
 sudo sh -c "echo 1000 > $LED0/delay_on"
 
 # Shutdown after a specified period of time (in minutes) if no device is connected.
-#sudo shutdown -h $SHUTD "Shutdown is activated. To cancel: sudo shutdown -c"
+sudo shutdown -h $SHUTD "Shutdown is activated. To cancel: sudo shutdown -c"
 
-# Wait for a USB storage device (e.g., a USB flash drive)
+# Wait for a USB storage device (e.g., a USB flash drive, HDD)
 STORAGE=$(ls /dev/* | grep "$STORAGE_DEV" | cut -d"/" -f3)
-#STORAGE=$(lsblk -x SIZE | grep sd[a-z]1  | awk '{print $1}' | sort | head -n 1)
 while [ -z "${STORAGE}" ]
   do
   sleep 1
@@ -122,13 +120,13 @@ mount /dev/"$STORAGE_DEV" "$STORAGE_MOUNT_POINT"
 
 # Cancel shutdown
 sudo shutdown -c
+
 # Set the USER LED 0 to static on to indicate that the storage device has been mounted (shutdown counter off)
 sudo sh -c "echo none > $LED0/trigger"
 sudo sh -c "echo 1 > $LED0/brightness"
 
-
-sudo sh -c "echo heartbeat > $LED1/trigger"
 # Set the USER LED 1 to blink at 1000ms to indicate that the BB is waiting for card reader or a camera
+sudo sh -c "echo heartbeat > $LED1/trigger"
 sudo sh -c "echo timer > $LED1/trigger"
 sudo sh -c "echo 1000 > $LED1/delay_on"
 
@@ -144,11 +142,12 @@ done
 # If the card reader is detected, mount it and obtain its UUID
 if [ ! -z "${CARD_READER[0]}" ]; then
   mount /dev"/${CARD_READER[0]}" "$CARD_MOUNT_POINT"
-
-  CARD_COUNT=$(find $CARD_MOUNT_POINT/ -type f | wc -l)
-  # # Set the ACT LED to blink at 500ms to indicate that the card has been mounted
+  
+  # Set the USER LED 1 to static on to indicate that the SDCard has been mounted
   sudo sh -c "echo none > $LED1/trigger"
   sudo sh -c "echo 1 > $LED1/brightness"
+
+  CARD_COUNT=$(find $CARD_MOUNT_POINT/ -type f | wc -l)
 
   # Create  a .id random identifier file if doesn't exist
   cd "$CARD_MOUNT_POINT"
@@ -168,7 +167,7 @@ if [ ! -z "${CARD_READER[0]}" ]; then
   pid=$!
 
   reset_LEDs
-  #sudo sh -c "echo timer > $LED2/trigger"
+  
   while kill -0 $pid 2> /dev/null
     do
     STORAGE_COUNT=$(find $BACKUP_PATH/ -type f | wc -l)
